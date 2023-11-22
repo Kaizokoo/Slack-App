@@ -1,10 +1,7 @@
 const { App } = require("@slack/bolt");
 require("dotenv").config();
-// const { WebClient } = require("@slack/web-api");
-// const { createEventAdapter } = require("@slack/events-api");
-
-// const slackToken = process.env.SLACK_BOT_TOKEN;
-// const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
+const mongoose = require("mongoose");
+const slackMessage = require("./textModel");
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -12,15 +9,20 @@ const app = new App({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 
-// const slackEvents = createEventAdapter(slackSigningSecret);
-// const slackClient = new WebClient(slackToken);
+mongoose
+  .connect(
+    "mongodb+srv://sachit:Mongo2023%2A@goingmerrycluster.dw6273x.mongodb.net/?retryWrites=true&w=majority"
+  )
+  .then(async () => {
+    console.log("Connected to the Mongo Database");
+    //starts the app
+    await app.start(process.env.PORT || 3000);
 
-(async () => {
-  // Start your app
-  await app.start(process.env.PORT || 3000);
-
-  console.log("Hello Grand Line.. Going Merry is going strong!");
-})();
+    console.log("Hello Grand Line.. Going Merry is going strong!");
+  })
+  .catch((error) => {
+    console.log(error);
+  });
 
 // Listen to the app_home_opened event, and when received, respond with a message including the user being messaged
 app.event("app_home_opened", async ({ event, say, client, view }) => {
@@ -241,20 +243,6 @@ app.action("button_abc", async ({ ack, body, client, logger }) => {
   }
 });
 
-// slackEvents.on("app_mention", (event) => {
-//   console.log(`Got message from user ${event.user}: ${event.text}`);
-//   (async () => {
-//     try {
-//       await slackClient.chat.postMessage({
-//         channel: event.channel,
-//         text: `Hello <@${event.user}>! :tada:`,
-//       });
-//     } catch (error) {
-//       console.log(error.data);
-//     }
-//   })();
-// });
-
 // Find conversation ID using the conversations.list method
 async function findConversation(name) {
   try {
@@ -358,6 +346,36 @@ app.message(async ({ message, say }) => {
 
     if (ifSaidHi) {
       await say(`${crewMemberGreeted.toUpperCase()} says Hi!`);
+    }
+  }
+});
+
+//test
+// let tesxtMessage = message({
+//   message:
+//     "this is a test to see if data is stored i am typing so much because i like typing",
+// });
+// tesxtMessage.save();
+
+app.message(async ({ message, say }) => {
+  if (!message.subtype && message.user) {
+    if (message.text.toLowerCase().includes("save:")) {
+      const savedString = message.text
+        .substring(message.text.indexOf("save:") + "save:".length)
+        .trim();
+      let textMessage = slackMessage({
+        message: savedString,
+      });
+      textMessage.save();
+    }
+  }
+});
+
+app.message(async ({ message, say }) => {
+  if (message.text.toLowerCase().includes("show messages")) {
+    const messages = await slackMessage.find();
+    for (const prevMessage of messages) {
+      await say(`${prevMessage.message}`);
     }
   }
 });
